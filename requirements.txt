@@ -1,0 +1,22 @@
+# Main dependencies with latest versions as of July 2025
+langgraph==0.5.4
+langchain==0.3.27
+langchain-openai==0.3.28
+langchain-community==0.3.27
+langchain-core==0.3.72
+python-dotenv==1.0.1
+faiss-cpu==1.8.0
+numpy==1.26.4
+requests==2.32.3
+pytest==8.3.2
+pydantic==2.8.2
+typing-extensions==4.12.2
+
+# Additional dependencies for specific patterns
+chromadb==0.4.24  # For RAG pattern
+tiktoken==0.7.0  # For token counting
+aiohttp==3.10.5  # For async HTTP requests
+tenacity==8.5.0  # For retry logic in circuit breaker
+psutil==6.0.0  # For system monitoring
+rich==13.7.1  # For better console output
+asyncio-throttle==1.0.2  # For rate limiting

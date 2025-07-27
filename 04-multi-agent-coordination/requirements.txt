@@ -1,0 +1,9 @@
+langgraph==0.5.4
+langchain==0.3.27
+langchain-openai==0.3.28
+langchain-core==0.3.72
+python-dotenv==1.0.1
+pydantic==2.8.2
+pytest==8.3.2
+rich==13.7.1
+asyncio-throttle==1.0.2
