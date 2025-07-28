@@ -2,7 +2,7 @@
 
 > **📖 Read the Full Blog Post**: [8 Essential AI Agent Design Patterns Every Developer Should Know](https://blog.balakumar.dev/2025/07/28/8-essential-ai-agent-design-patterns-every-developer-should-know/)
 
-A comprehensive collection of **8 essential AI agent design patterns** implemented with **LangGraph** and modern Python frameworks. This repository provides **practical, runnable examples** of each pattern with clear documentation, working code, and comprehensive tests.
+A comprehensive collection of **8 foundational AI agent design patterns** implemented with **LangGraph** and modern Python frameworks, with **12 additional patterns coming soon**. This repository provides **practical, runnable examples** of each pattern with clear documentation, working code, and comprehensive tests.
 
 **Perfect for**: AI developers, researchers, and anyone building intelligent agent systems who wants to understand and implement proven design patterns.
 
@@ -24,7 +24,7 @@ cd 01-tool-using-agent && python example.py
 - **Testing & Validation**: Comprehensive test suites for each pattern
 - **Flexible Integration**: Works with OpenAI, Anthropic, local LLMs, and LiteLLM
 
-## 📋 The 8 Essential Patterns
+## 📋 The 8 Foundational Patterns
 
 | Pattern | Description | Use Cases | Complexity |
 |---------|-------------|-----------|------------|
@@ -231,6 +231,46 @@ python -m pytest -v
 - Transparent assessments
 
 **Example Use Cases**: Content moderation, ethical AI, compliance systems
+
+## 🚧 Coming Soon: Additional Patterns
+
+We're actively working on implementing these additional patterns to provide a more comprehensive collection:
+
+### 🧠 Reasoning & Intelligence Patterns
+| Pattern | Description | Use Cases | Priority |
+|---------|-------------|-----------|----------|
+| **🔗 Chain of Thought (CoT)** | Step-by-step reasoning for complex problems | Math problems, logical reasoning, analysis | High |
+| **🎯 Router/Classifier** | Query routing to appropriate specialized handlers | Intent detection, service routing, load balancing | High |
+| **🔄 Self-Correction** | Error detection and automatic fixing mechanisms | Code debugging, content validation, quality control | High |
+
+### 🚀 Performance & Reliability Patterns
+| Pattern | Description | Use Cases | Priority |
+|---------|-------------|-----------|----------|
+| **⏱️ Retry with Exponential Backoff** | Intelligent transient failure handling | API resilience, network timeouts, rate limiting | High |
+| **💾 Caching/Memoization** | Performance optimization through result caching | API calls, computation results, embeddings | High |
+| **📡 Streaming Response** | Real-time user experience with progressive output | Chat interfaces, long-running tasks, live updates | Medium |
+
+### 🔄 Processing & Orchestration Patterns
+| Pattern | Description | Use Cases | Priority |
+|---------|-------------|-----------|----------|
+| **⛓️ Prompt Chaining** | Sequential prompt processing for complex workflows | Multi-step analysis, data transformation, reports | Medium |
+| **🗳️ Ensemble** | Multiple models voting on outputs for accuracy | Critical decisions, consensus building, validation | Medium |
+| **🧠 Memory Management** | Conversation and long-term memory patterns | Chatbots, personalization, context retention | High |
+
+### 🔍 Monitoring & Human Integration Patterns
+| Pattern | Description | Use Cases | Priority |
+|---------|-------------|-----------|----------|
+| **👁️ Observer/Monitor** | System observability and debugging capabilities | Performance tracking, error detection, analytics | Medium |
+| **👤 Human-in-the-Loop** | Tasks requiring human oversight and intervention | Content approval, critical decisions, training | Medium |
+| **🛡️ Fallback/Graceful Degradation** | Backup behavior when primary systems fail | Service outages, model failures, degraded modes | High |
+
+### 📅 Implementation Timeline
+- **Q1 2025**: Chain of Thought, Router/Classifier, Retry with Backoff
+- **Q2 2025**: Caching, Memory Management, Self-Correction
+- **Q3 2025**: Streaming, Ensemble, Human-in-the-Loop
+- **Q4 2025**: Observer/Monitor, Prompt Chaining, Fallback patterns
+
+**Want a specific pattern prioritized?** [Open an issue](https://github.com/balakumardev/ai-agent-design-patterns/issues) and let us know!
 
 ## 🔧 Troubleshooting
 
