@@ -3,7 +3,7 @@
 from typing import List, Dict, Any, Optional, Set
 from dataclasses import dataclass, field
 from enum import Enum
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import uuid
 
 
@@ -181,6 +181,31 @@ class ExecutionPlan:
             result += self.get_task_hierarchy_display(subtask, indent + 1)
         
         return result
+
+
+# Pydantic models for structured outputs
+class SubtaskModel(BaseModel):
+    """Pydantic model for subtasks in structured output."""
+    title: str
+    description: str
+    priority: str = Field(..., pattern=r"^(critical|high|medium|low)$")
+    estimated_duration: Optional[int] = Field(None, description="Duration in minutes")
+    dependencies: List[str] = Field(default_factory=list)
+
+
+class TaskModel(BaseModel):
+    """Pydantic model for tasks in structured output."""
+    title: str
+    description: str
+    priority: str = Field(..., pattern=r"^(critical|high|medium|low)$")
+    estimated_duration: Optional[int] = Field(None, description="Duration in minutes")
+    dependencies: List[str] = Field(default_factory=list)
+    subtasks: List[SubtaskModel] = Field(default_factory=list)
+
+
+class TaskDecompositionResponse(BaseModel):
+    """Structured response for task decomposition."""
+    tasks: List[TaskModel]
 
 
 class PlanningRequest(BaseModel):

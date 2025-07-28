@@ -3,7 +3,7 @@
 from typing import List, Dict, Any, Optional, Set
 from dataclasses import dataclass, field
 from enum import Enum
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import uuid
 from datetime import datetime
 
@@ -186,6 +186,45 @@ class CoordinationPlan:
             status = agent.status.value
             status_counts[status] = status_counts.get(status, 0) + 1
         return status_counts
+
+
+# Pydantic models for structured outputs
+class AgentCapabilityModel(BaseModel):
+    """Pydantic model for agent capabilities."""
+    name: str
+    description: str
+    input_types: List[str] = Field(default_factory=list)
+    output_types: List[str] = Field(default_factory=list)
+    estimated_duration: Optional[int] = Field(None, description="Duration in seconds")
+
+
+class AgentModel(BaseModel):
+    """Pydantic model for agents in structured output."""
+    name: str
+    role: str = Field(..., pattern=r"^(coordinator|researcher|analyst|writer|reviewer|executor|specialist)$")
+    capabilities: List[AgentCapabilityModel]
+    specialization: Optional[str] = None
+
+
+class AgentSetupResponse(BaseModel):
+    """Structured response for agent setup."""
+    agents: List[AgentModel]
+
+
+class CoordinationTaskModel(BaseModel):
+    """Pydantic model for coordination tasks."""
+    title: str
+    description: str
+    required_capabilities: List[str]
+    priority: str = Field(..., pattern=r"^(high|medium|low)$")
+    estimated_duration: Optional[int] = Field(None, description="Duration in minutes")
+    dependencies: List[str] = Field(default_factory=list)
+
+
+class CoordinationPlanResponse(BaseModel):
+    """Structured response for coordination planning."""
+    tasks: List[CoordinationTaskModel]
+    execution_order: List[str] = Field(default_factory=list)
 
 
 class CoordinationRequest(BaseModel):

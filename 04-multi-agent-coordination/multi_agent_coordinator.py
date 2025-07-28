@@ -2,7 +2,6 @@
 
 import os
 import sys
-import json
 import asyncio
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
@@ -24,7 +23,8 @@ from shared_utils import create_llm, validate_environment
 
 from agent_models import (
     Agent, AgentRole, AgentCapability, AgentStatus, Message, MessageType,
-    CoordinationTask, CoordinationPlan, CoordinationRequest
+    CoordinationTask, CoordinationPlan, CoordinationRequest, 
+    AgentSetupResponse, CoordinationPlanResponse
 )
 
 load_dotenv()
@@ -107,6 +107,9 @@ class MultiAgentCoordinator:
         goal = state["goal"]
         context = state.get("context", "")
         
+        # Bind structured output model to the LLM
+        model_with_structure = self.model.with_structured_output(AgentSetupResponse)
+        
         setup_prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an expert in multi-agent system design. Your job is to determine what types of agents are needed for a given goal and set up their capabilities.
 
@@ -116,24 +119,7 @@ Guidelines:
 3. Consider the workflow and how agents will collaborate
 4. Limit to 3-5 agents for manageable coordination
 
-Return your response as a JSON object with this structure:
-{{
-    "agents": [
-        {{
-            "name": "Agent name",
-            "role": "researcher|analyst|writer|reviewer|coordinator|executor|specialist",
-            "capabilities": [
-                {{
-                    "name": "capability_name",
-                    "description": "What this capability does",
-                    "input_types": ["text", "data", "query"],
-                    "output_types": ["analysis", "report", "summary"],
-                    "estimated_duration": 300
-                }}
-            ]
-        }}
-    ]
-}}"""),
+Return your response using the structured output format provided."""),
             ("human", """Goal: {goal}
             
 Context: {context}
@@ -142,41 +128,34 @@ Please design a multi-agent system to accomplish this goal.""")
         ])
         
         try:
-            response = self.model.invoke(
+            response = model_with_structure.invoke(
                 setup_prompt.format_messages(goal=goal, context=context)
             )
             
-            # Parse the JSON response
-            response_text = str(response.content).strip()
-
-            # Try to extract JSON from the response if it's wrapped in markdown
-            if "```json" in response_text:
-                start = response_text.find("```json") + 7
-                end = response_text.find("```", start)
-                response_text = response_text[start:end].strip()
-            elif "```" in response_text:
-                start = response_text.find("```") + 3
-                end = response_text.find("```", start)
-                response_text = response_text[start:end].strip()
-
-            try:
-                agent_data = json.loads(response_text)
-            except json.JSONDecodeError as e:
-                console.print(f"❌ JSON parsing failed in agent setup: {e}", style="red")
-                console.print(f"Raw response: {response_text[:200]}...", style="dim")
-
-                # Fallback: create a simple agent structure
-                agent_data = {
-                    "agents": [
-                        {
-                            "id": "coordinator",
-                            "role": "Coordinator",
-                            "capabilities": ["task_coordination"],
-                            "description": "Coordinates tasks and manages workflow"
-                        }
-                    ]
-                }
-                console.print("🔄 Using fallback agent structure", style="yellow")
+            # Response is now a structured AgentSetupResponse object
+            agent_data = {"agents": [agent.model_dump() for agent in response.agents]}
+            
+        except Exception as e:
+            console.print(f"❌ Agent setup failed: {e}", style="red")
+            # Fallback: create a simple agent structure
+            agent_data = {
+                "agents": [
+                    {
+                        "name": "Coordinator",
+                        "role": "coordinator",
+                        "capabilities": [
+                            {
+                                "name": "task_coordination",
+                                "description": "Coordinates tasks and manages workflow",
+                                "input_types": ["text"],
+                                "output_types": ["coordination_plan"],
+                                "estimated_duration": 300
+                            }
+                        ]
+                    }
+                ]
+            }
+            console.print("🔄 Using fallback agent structure", style="yellow")
             
             # Create coordination plan
             plan = CoordinationPlan(goal=goal)
@@ -235,6 +214,28 @@ Please design a multi-agent system to accomplish this goal.""")
         goal = state["goal"]
         plan = state["coordination_plan"]
         
+        # Safety check - if plan is None, create a basic one
+        if plan is None:
+            console.print("⚠️ No coordination plan found, creating basic plan", style="yellow")
+            plan = CoordinationPlan(goal=goal)
+            # Add a basic coordinator agent
+            coordinator = Agent(
+                name="Coordinator",
+                role=AgentRole.COORDINATOR,
+                capabilities=[
+                    AgentCapability(
+                        name="task_coordination",
+                        description="Coordinate tasks between agents",
+                        input_types=["goal"],
+                        output_types=["coordination_plan"]
+                    )
+                ]
+            )
+            plan.add_agent(coordinator)
+        
+        # Bind structured output model to the LLM
+        model_with_structure = self.model.with_structured_output(CoordinationPlanResponse)
+        
         planning_prompt = ChatPromptTemplate.from_messages([
             ("system", """You are a coordination planner. Your job is to create a sequence of tasks that the available agents can execute to achieve the goal.
 
@@ -247,18 +248,7 @@ Guidelines:
 Available agents and their capabilities:
 {agent_info}
 
-Return your response as a JSON object with this structure:
-{{
-    "tasks": [
-        {{
-            "title": "Task title",
-            "description": "Detailed task description",
-            "required_capabilities": ["capability1", "capability2"],
-            "assigned_agents": ["agent_id1"],
-            "dependencies": ["task_id1", "task_id2"]
-        }}
-    ]
-}}"""),
+Return your response using the structured output format provided."""),
             ("human", """Goal: {goal}
 
 Please create a coordination plan with specific tasks for the available agents.""")
@@ -271,45 +261,32 @@ Please create a coordination plan with specific tasks for the available agents."
                 caps = [f"{cap.name}: {cap.description}" for cap in agent.capabilities]
                 agent_info.append(f"{agent.name} ({agent.role.value}): {', '.join(caps)}")
             
-            response = self.model.invoke(
+            response = model_with_structure.invoke(
                 planning_prompt.format_messages(
                     goal=goal,
                     agent_info="\n".join(agent_info)
                 )
             )
             
-            # Parse the JSON response
-            response_text = str(response.content).strip()
-
-            # Try to extract JSON from the response if it's wrapped in markdown
-            if "```json" in response_text:
-                start = response_text.find("```json") + 7
-                end = response_text.find("```", start)
-                response_text = response_text[start:end].strip()
-            elif "```" in response_text:
-                start = response_text.find("```") + 3
-                end = response_text.find("```", start)
-                response_text = response_text[start:end].strip()
-
-            try:
-                task_data = json.loads(response_text)
-            except json.JSONDecodeError as e:
-                console.print(f"❌ JSON parsing failed in coordination planning: {e}", style="red")
-                console.print(f"Raw response: {response_text[:200]}...", style="dim")
-
-                # Fallback: create a simple task structure
-                task_data = {
-                    "tasks": [
-                        {
-                            "title": "Complete goal",
-                            "description": f"Work towards achieving: {goal}",
-                            "required_capabilities": ["task_coordination"],
-                            "assigned_agents": ["coordinator"],
-                            "dependencies": []
-                        }
-                    ]
-                }
-                console.print("🔄 Using fallback task structure", style="yellow")
+            # Response is now a structured CoordinationPlanResponse object
+            task_data = {"tasks": [task.model_dump() for task in response.tasks]}
+            
+        except Exception as e:
+            console.print(f"❌ Coordination planning failed: {e}", style="red")
+            # Fallback: create a simple task structure
+            task_data = {
+                "tasks": [
+                    {
+                        "title": "Complete goal",
+                        "description": f"Work towards achieving: {goal}",
+                        "required_capabilities": ["task_coordination"],
+                        "priority": "high",
+                        "estimated_duration": 60,
+                        "dependencies": []
+                    }
+                ]
+            }
+            console.print("🔄 Using fallback task structure", style="yellow")
             
             # Create tasks
             for task_info in task_data["tasks"]:

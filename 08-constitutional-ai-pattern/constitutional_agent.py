@@ -22,7 +22,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from constitutional_models import (
     ConstitutionalPrinciple, ConstitutionalAssessment, ViolationResult,
     ConstitutionalPrincipleLibrary, ConstitutionalValidator, ConstitutionalModifier,
-    PrincipleType, ViolationSeverity, ActionType
+    PrincipleType, ViolationSeverity, ActionType, ConstitutionalEvaluationResponse
 )
 
 load_dotenv()
@@ -61,13 +61,23 @@ class LLMConstitutionalValidator(ConstitutionalValidator):
     def validate(self, content: str, principle: ConstitutionalPrinciple) -> ViolationResult:
         """Validate content against a constitutional principle using LLM."""
         
+        # Create a simple Pydantic model for this specific validation
+        from pydantic import BaseModel
+        class ValidationResponse(BaseModel):
+            violated: bool
+            confidence: float
+            explanation: str
+        
+        # Bind structured output model to the LLM
+        model_with_structure = self.model.with_structured_output(ValidationResponse)
+        
         validation_prompt = ChatPromptTemplate.from_messages([
             ("system", """You are a constitutional AI validator. Your job is to evaluate content against specific principles.
 
-Respond with a JSON object containing:
-- "violated": boolean (true if the principle is violated)
-- "confidence": float (0.0 to 1.0, how confident you are)
-- "explanation": string (brief explanation of your assessment)
+Return your response using the structured output format with:
+- violated: boolean (true if the principle is violated)
+- confidence: float (0.0 to 1.0, how confident you are)
+- explanation: string (brief explanation of your assessment)
 
 Be thorough but fair in your assessment."""),
             ("human", """Principle: {principle_name}
@@ -75,12 +85,12 @@ Description: {principle_description}
 
 Evaluation prompt: {prompt_template}
 
-Please evaluate this content and respond with JSON only:
+Please evaluate this content:
 {content}""")
         ])
         
         try:
-            response = self.model.invoke(
+            response = model_with_structure.invoke(
                 validation_prompt.format_messages(
                     principle_name=principle.name,
                     principle_description=principle.description,
@@ -89,39 +99,26 @@ Please evaluate this content and respond with JSON only:
                 )
             )
             
-            # Parse JSON response
-            import json
-            try:
-                result_data = json.loads(str(response.content))
-                
-                return ViolationResult(
-                    principle_id=principle.id,
-                    violated=result_data.get("violated", False),
-                    confidence=result_data.get("confidence", 0.5),
-                    explanation=result_data.get("explanation", "No explanation provided"),
-                    severity=principle.severity,
-                    suggested_action=principle.action
-                )
-            except json.JSONDecodeError:
-                # Fallback if JSON parsing fails
-                violated = "true" in str(response.content).lower() or "violated" in str(response.content).lower()
-                return ViolationResult(
-                    principle_id=principle.id,
-                    violated=violated,
-                    confidence=0.5,
-                    explanation="JSON parsing failed, used fallback assessment",
-                    severity=principle.severity,
-                    suggested_action=principle.action
-                )
-                
+            # Response is now a structured ValidationResponse object
+            return ViolationResult(
+                principle_id=principle.id,
+                violated=response.violated,
+                confidence=response.confidence,
+                explanation=response.explanation,
+                severity=principle.severity,
+                suggested_action=principle.action
+            )
+            
         except Exception as e:
+            # Fallback if structured output fails
+            console.print(f"❌ Validation failed for principle {principle.id}: {e}", style="red")
             return ViolationResult(
                 principle_id=principle.id,
                 violated=False,
                 confidence=0.0,
-                explanation=f"Validation error: {str(e)}",
+                explanation=f"Validation failed due to error: {str(e)}",
                 severity=principle.severity,
-                suggested_action=ActionType.LOG
+                suggested_action=principle.action
             )
 
 

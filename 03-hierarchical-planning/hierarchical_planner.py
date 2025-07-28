@@ -2,7 +2,6 @@
 
 import os
 import sys
-import json
 from typing import List, Dict, Any, Optional, cast
 from dataclasses import dataclass
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
@@ -20,7 +19,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from shared_utils import create_llm, validate_environment
 
-from task_models import Task, TaskStatus, TaskPriority, ExecutionPlan, PlanningRequest
+from task_models import Task, TaskStatus, TaskPriority, ExecutionPlan, PlanningRequest, TaskDecompositionResponse
 
 load_dotenv()
 
@@ -103,6 +102,9 @@ class HierarchicalPlanner:
         max_tasks = state["max_tasks_per_level"]
         current_depth = state["current_depth"]
         
+        # Bind the structured output model to the LLM
+        model_with_structure = self.model.with_structured_output(TaskDecompositionResponse)
+        
         decomposition_prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an expert task planner. Your job is to break down complex goals into manageable, hierarchical tasks.
 
@@ -114,27 +116,7 @@ Guidelines:
 5. Estimate duration in minutes for leaf tasks
 6. Maximum {max_tasks} tasks per level, maximum depth {max_depth}
 
-IMPORTANT: Return ONLY a valid JSON object with this exact structure (no markdown, no explanations):
-{{
-    "tasks": [
-        {{
-            "title": "Task title",
-            "description": "Detailed description",
-            "priority": "high|medium|low|critical",
-            "estimated_duration": 30,
-            "dependencies": ["task_id1", "task_id2"],
-            "subtasks": [
-                {{
-                    "title": "Subtask title",
-                    "description": "Subtask description",
-                    "priority": "medium",
-                    "estimated_duration": 15,
-                    "dependencies": []
-                }}
-            ]
-        }}
-    ]
-}}"""),
+Return your response using the structured output format provided."""),
             ("human", """Goal: {goal}
             
 Context: {context}
@@ -145,7 +127,7 @@ Please create a hierarchical task breakdown for this goal.""")
         ])
         
         try:
-            response = self.model.invoke(
+            response = model_with_structure.invoke(
                 decomposition_prompt.format_messages(
                     goal=goal,
                     context=context,
@@ -155,79 +137,46 @@ Please create a hierarchical task breakdown for this goal.""")
                 )
             )
             
-            # Parse the JSON response
-            response_text = str(response.content).strip()
-
-            # Try to extract JSON from the response if it's wrapped in markdown
-            if "```json" in response_text:
-                start = response_text.find("```json") + 7
-                end = response_text.find("```", start)
-                response_text = response_text[start:end].strip()
-            elif "```" in response_text:
-                start = response_text.find("```") + 3
-                end = response_text.find("```", start)
-                response_text = response_text[start:end].strip()
-
-            try:
-                task_data = json.loads(response_text)
-            except json.JSONDecodeError as e:
-                console.print(f"❌ JSON parsing failed: {e}", style="red")
-                console.print(f"Raw response: {response_text[:200]}...", style="dim")
-
-                # Fallback: create a simple task structure
-                task_data = {
-                    "tasks": [
-                        {
-                            "id": "fallback_task_1",
-                            "title": "Analyze the problem",
-                            "description": "Break down the problem into smaller components",
-                            "priority": "high",
-                            "estimated_duration": "30 minutes",
-                            "dependencies": []
-                        },
-                        {
-                            "id": "fallback_task_2",
-                            "title": "Implement solution",
-                            "description": "Execute the planned approach",
-                            "priority": "high",
-                            "estimated_duration": "60 minutes",
-                            "dependencies": ["fallback_task_1"]
-                        }
-                    ]
-                }
-                console.print("🔄 Using fallback task structure", style="yellow")
-            
-            # Create execution plan if it doesn't exist
-            if "execution_plan" not in state or state["execution_plan"] is None:
-                execution_plan = ExecutionPlan(goal=goal)
-            else:
-                execution_plan = state["execution_plan"]
-            
-            # Add tasks to the plan
-            self._add_tasks_to_plan(task_data["tasks"], execution_plan)
-            
-            return {
-                "execution_plan": execution_plan,
-                "current_depth": current_depth + 1,
-                "planning_complete": current_depth >= max_depth
-            }
+            # Response is now a structured TaskDecompositionResponse object
+            task_data = {"tasks": [task.model_dump() for task in response.tasks]}
             
         except Exception as e:
-            console.print(f"[red]Error in decomposition: {str(e)}[/red]")
-            # Create a simple fallback plan
-            execution_plan = ExecutionPlan(goal=goal)
-            fallback_task = Task(
-                title="Complete goal manually",
-                description=f"Manual completion of: {goal}",
-                priority=TaskPriority.HIGH,
-                estimated_duration=60
-            )
-            execution_plan.add_task(fallback_task)
-            
-            return {
-                "execution_plan": execution_plan,
-                "planning_complete": True
+            console.print(f"❌ Task decomposition failed: {e}", style="red")
+            # Fallback: create a simple task structure
+            task_data = {
+                "tasks": [
+                    {
+                        "title": "Analyze the problem",
+                        "description": "Break down the problem into smaller components",
+                        "priority": "high",
+                        "estimated_duration": 30,
+                        "dependencies": []
+                    },
+                    {
+                        "title": "Implement solution",
+                        "description": "Execute the planned approach",
+                        "priority": "high",
+                        "estimated_duration": 60,
+                        "dependencies": []
+                    }
+                ]
             }
+            console.print("🔄 Using fallback task structure", style="yellow")
+        
+        # Create execution plan if it doesn't exist
+        if "execution_plan" not in state or state["execution_plan"] is None:
+            execution_plan = ExecutionPlan(goal=goal)
+        else:
+            execution_plan = state["execution_plan"]
+        
+        # Add tasks to the plan
+        self._add_tasks_to_plan(task_data["tasks"], execution_plan)
+        
+        return {
+            "execution_plan": execution_plan,
+            "current_depth": current_depth + 1,
+            "planning_complete": current_depth >= max_depth
+        }
     
     def _add_tasks_to_plan(self, tasks_data: List[Dict], plan: ExecutionPlan, parent_id: Optional[str] = None):
         """Add tasks from JSON data to the execution plan."""

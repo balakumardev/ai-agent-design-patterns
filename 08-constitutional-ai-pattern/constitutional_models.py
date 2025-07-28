@@ -6,6 +6,7 @@ from enum import Enum
 from abc import ABC, abstractmethod
 import json
 from datetime import datetime
+from pydantic import BaseModel, Field
 
 
 class PrincipleType(Enum):
@@ -315,6 +316,26 @@ class ConstitutionalValidator(ABC):
     def validate(self, content: str, principle: ConstitutionalPrinciple) -> ViolationResult:
         """Validate content against a constitutional principle."""
         pass
+
+
+# Pydantic models for structured outputs
+class ConstitutionalViolationModel(BaseModel):
+    """Pydantic model for constitutional violation results."""
+    principle_id: str
+    violated: bool
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    explanation: str
+    severity: str = Field(..., pattern=r"^(low|medium|high|critical)$")
+    suggested_action: str = Field(..., pattern=r"^(warn|modify|reject|escalate|log)$")
+    modified_content: Optional[str] = None
+
+
+class ConstitutionalEvaluationResponse(BaseModel):
+    """Structured response for constitutional evaluation."""
+    violations: List[ConstitutionalViolationModel]
+    overall_compliant: bool
+    recommended_action: str = Field(..., pattern=r"^(warn|modify|reject|escalate|log)$")
+    final_content: str
 
 
 class ConstitutionalModifier(ABC):
