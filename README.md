@@ -1,6 +1,6 @@
 # 🤖 Agent Design Patterns
 
-> **📖 Read the Full Blog Post**: [8 Essential AI Agent Design Patterns Every Developer Should Know](https://your-blog-url.com/agent-design-patterns)
+> **📖 Read the Full Blog Post**: [8 Essential AI Agent Design Patterns Every Developer Should Know](https://blog.balakumar.dev/2025/07/28/8-essential-ai-agent-design-patterns-every-developer-should-know/)
 
 A comprehensive collection of **8 essential AI agent design patterns** implemented with **LangGraph** and modern Python frameworks. This repository provides **practical, runnable examples** of each pattern with clear documentation, working code, and comprehensive tests.
 
@@ -9,8 +9,8 @@ A comprehensive collection of **8 essential AI agent design patterns** implement
 ## ⚡ Quick Start (30 seconds)
 
 ```bash
-git clone https://github.com/your-username/agent-design-patterns.git
-cd agent-design-patterns
+git clone https://github.com/balakumardev/ai-agent-design-patterns.git
+cd ai-agent-design-patterns
 python setup.py  # Automated setup
 # Edit .env with your API key, then:
 cd 01-tool-using-agent && python example.py
@@ -42,16 +42,16 @@ cd 01-tool-using-agent && python example.py
 ### Option 1: Automated Setup (Recommended)
 ```bash
 # Clone and setup everything automatically
-git clone https://github.com/your-username/agent-design-patterns.git
-cd agent-design-patterns
+git clone https://github.com/balakumardev/ai-agent-design-patterns.git
+cd ai-agent-design-patterns
 python setup.py
 ```
 
 ### Option 2: Manual Setup
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-username/agent-design-patterns.git
-cd agent-design-patterns
+git clone https://github.com/balakumardev/ai-agent-design-patterns.git
+cd ai-agent-design-patterns
 
 # 2. Create virtual environment
 python -m venv venv
@@ -316,10 +316,10 @@ If you find this repository helpful, please consider giving it a star! ⭐
 
 ## 📞 Support & Community
 
-- **📖 Blog Post**: [8 Essential AI Agent Design Patterns](https://your-blog-url.com/agent-design-patterns)
-- **🐛 Issues**: [GitHub Issues](https://github.com/your-username/agent-design-patterns/issues)
-- **💬 Discussions**: [GitHub Discussions](https://github.com/your-username/agent-design-patterns/discussions)
-- **📧 Contact**: [your-email@example.com](mailto:your-email@example.com)
+- **📖 Blog Post**: [8 Essential AI Agent Design Patterns](https://blog.balakumar.dev/2025/07/28/8-essential-ai-agent-design-patterns-every-developer-should-know/)
+- **🐛 Issues**: [GitHub Issues](https://github.com/balakumardev/ai-agent-design-patterns/issues)
+- **💬 Discussions**: [GitHub Discussions](https://github.com/balakumardev/ai-agent-design-patterns/discussions)
+- **📧 Contact**: [mail@balakumar.dev](mailto:mail@balakumar.dev)
 
 ---
 
