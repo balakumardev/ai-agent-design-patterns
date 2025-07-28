@@ -2,7 +2,7 @@
 
 import os
 import sys
-from typing import List, Dict, Any, Literal
+from typing import List, Dict, Any, Literal, Optional
 from dataclasses import dataclass
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
@@ -48,14 +48,24 @@ class GraphState(TypedDict):
 class ReflectionAgent:
     """A LangGraph-based agent that improves outputs through self-reflection."""
     
-    def __init__(self, model_name: str = None, max_iterations: int = 3):
+    def __init__(self, model_name: Optional[str] = None, max_iterations: int = 3):
         """Initialize the reflection agent."""
         self.model = create_llm(model_name=model_name, temperature=0.7)
         self.max_iterations = max_iterations
         self.graph = self._create_graph()
     
-    def _create_graph(self) -> StateGraph:
-        """Create the LangGraph workflow for reflection."""
+    def _create_graph(self) -> Any:
+        """
+        Create the LangGraph workflow for reflection.
+        
+        graph TD
+            A[Start] --> B(Generate)
+            B --> C(Reflect)
+            C --> D{Should Revise?}
+            D -- Yes --> E(Revise)
+            D -- No --> F[END]
+            E --> C
+        """
         workflow = StateGraph(GraphState)
         
         # Add nodes
@@ -184,7 +194,7 @@ class ReflectionAgent:
         else:
             return "end"
     
-    def run(self, query: str, max_iterations: int = None) -> ReflectionResult:
+    def run(self, query: str, max_iterations: Optional[int] = None) -> ReflectionResult:
         """Run the reflection agent on a query."""
         if max_iterations is None:
             max_iterations = self.max_iterations
@@ -218,7 +228,7 @@ class ReflectionAgent:
                 iteration=0
             )
     
-    def stream_reflection(self, query: str, max_iterations: int = None):
+    def stream_reflection(self, query: str, max_iterations: Optional[int] = None):
         """Stream the reflection process step by step."""
         if max_iterations is None:
             max_iterations = self.max_iterations

@@ -51,8 +51,8 @@ class RAGEnhancedAgent:
     """A LangGraph-based agent enhanced with RAG capabilities."""
     
     def __init__(
-        self, 
-        model_name: str = "gpt-4o-mini",
+        self,
+        model_name: str = "ollama/llama2",
         vector_store_config: Optional[VectorStoreConfig] = None
     ):
         """Initialize the RAG-enhanced agent."""
@@ -65,8 +65,18 @@ class RAGEnhancedAgent:
         )
         self.graph = self._create_graph()
     
-    def _create_graph(self) -> StateGraph:
-        """Create the LangGraph workflow for RAG-enhanced responses."""
+    def _create_graph(self) -> Any:
+        """
+        Create the LangGraph workflow for RAG-enhanced responses.
+        
+        graph TD
+            A[Start] --> B(Retrieve Context)
+            B --> C(Generate Response)
+            C --> D{Should Evaluate?}
+            D -- Yes --> E(Evaluate Response)
+            D -- No --> F[END]
+            E --> F
+        """
         workflow = StateGraph(RAGState)
         
         # Add nodes
@@ -184,7 +194,7 @@ Confidence score:""")
             
             # Extract confidence score
             try:
-                confidence_score = float(response.content.strip())
+                confidence_score = float(str(response.content).strip())
                 confidence_score = max(0.0, min(1.0, confidence_score))  # Clamp to [0,1]
             except ValueError:
                 confidence_score = 0.5  # Default if parsing fails

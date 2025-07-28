@@ -59,7 +59,7 @@ class ResilientAgentState(TypedDict):
 class ResilientAgent:
     """An agent that uses circuit breakers for resilient operation."""
     
-    def __init__(self, model_name: str = None):
+    def __init__(self, model_name: Optional[str] = None):
         """Initialize the resilient agent."""
         self.model = create_llm(model_name=model_name, temperature=0.1)
         
@@ -117,8 +117,21 @@ class ResilientAgent:
         
         return circuit_breakers
     
-    def _create_graph(self) -> StateGraph:
-        """Create the LangGraph workflow for resilient processing."""
+    def _create_graph(self) -> Any:
+        """
+        Create the LangGraph workflow for resilient processing.
+        
+        graph TD
+            A[Start] --> B(Process Request)
+            B --> C{Should Assess Quality?}
+            C -- Assess --> D(Assess Quality)
+            C -- Fallback --> F(Handle Fallback)
+            C -- Complete --> G[END]
+            D --> E{Should Use Fallback?}
+            E -- Fallback --> F
+            E -- Complete --> G
+            F --> G
+        """
         workflow = StateGraph(ResilientAgentState)
         
         # Add nodes
@@ -258,9 +271,9 @@ class ResilientAgent:
     
     def should_use_fallback(self, state: ResilientAgentState) -> str:
         """Determine if fallback should be used based on quality."""
-        quality_score = state.get("quality_score", 0.5)
+        quality_score = state.get("quality_score")
         
-        if quality_score < 0.3:
+        if quality_score is not None and quality_score < 0.3:
             return "fallback"
         else:
             return "complete"

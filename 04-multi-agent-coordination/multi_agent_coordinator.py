@@ -47,13 +47,27 @@ class CoordinationState(TypedDict):
 class MultiAgentCoordinator:
     """A LangGraph-based system for coordinating multiple AI agents."""
     
-    def __init__(self, model_name: str = None):
+    def __init__(self, model_name: Optional[str] = None):
         """Initialize the multi-agent coordinator."""
         self.model = create_llm(model_name=model_name, temperature=0.3)
         self.graph = self._create_graph()
     
-    def _create_graph(self) -> StateGraph:
-        """Create the LangGraph workflow for multi-agent coordination."""
+    def _create_graph(self) -> Any:
+        """
+        Create the LangGraph workflow for multi-agent coordination.
+        
+        graph TD
+            A[Start] --> B(Setup Agents)
+            B --> C(Plan Coordination)
+            C --> D(Execute Coordination)
+            D --> E{Continue Coordination?}
+            E -- Yes --> F(Monitor Progress)
+            E -- No --> H[END]
+            F --> G{Continue Monitoring?}
+            G -- Execute Next --> D
+            G -- Replan --> C
+            G -- Complete --> H
+        """
         workflow = StateGraph(CoordinationState)
         
         # Add nodes
@@ -133,7 +147,7 @@ Please design a multi-agent system to accomplish this goal.""")
             )
             
             # Parse the JSON response
-            response_text = response.content.strip()
+            response_text = str(response.content).strip()
 
             # Try to extract JSON from the response if it's wrapped in markdown
             if "```json" in response_text:
@@ -265,7 +279,7 @@ Please create a coordination plan with specific tasks for the available agents."
             )
             
             # Parse the JSON response
-            response_text = response.content.strip()
+            response_text = str(response.content).strip()
 
             # Try to extract JSON from the response if it's wrapped in markdown
             if "```json" in response_text:
@@ -391,7 +405,7 @@ Please execute this task and provide the result.""")
             
             # Mark task as completed
             next_task.status = "completed"
-            next_task.result = response.content
+            next_task.result = str(response.content)
             next_task.completed_at = datetime.now()
             plan.completed_tasks.add(next_task.id)
             

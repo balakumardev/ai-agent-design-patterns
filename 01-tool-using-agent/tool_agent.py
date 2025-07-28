@@ -36,7 +36,7 @@ class GraphState(TypedDict):
 class ToolUsingAgent:
     """A LangGraph-based agent that can use multiple tools to solve problems."""
     
-    def __init__(self, model_name: str = None):
+    def __init__(self, model_name: Optional[str] = None):
         """Initialize the tool-using agent."""
         self.tools = get_tools()
         self.model = create_llm(model_name=model_name, temperature=0)
@@ -44,7 +44,16 @@ class ToolUsingAgent:
         self.graph = self._create_graph()
     
     def _create_graph(self) -> StateGraph:
-        """Create the LangGraph workflow."""
+        """
+        Creates the LangGraph workflow.
+        
+        graph TD
+            A[User Query] --> B(Agent Node)
+            B --> C{Tool Needed?}
+            C -- Yes --> D[Tool Node]
+            C -- No --> F[END]
+            D --> B
+        """
         # Create the graph
         workflow = StateGraph(GraphState)
         

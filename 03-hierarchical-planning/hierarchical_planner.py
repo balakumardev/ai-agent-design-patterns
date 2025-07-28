@@ -3,7 +3,7 @@
 import os
 import sys
 import json
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, cast
 from dataclasses import dataclass
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
@@ -43,13 +43,26 @@ class PlanningState(TypedDict):
 class HierarchicalPlanner:
     """A LangGraph-based agent that creates and executes hierarchical plans."""
     
-    def __init__(self, model_name: str = None):
+    def __init__(self, model_name: Optional[str] = None):
         """Initialize the hierarchical planner."""
         self.model = create_llm(model_name=model_name, temperature=0.3)
         self.graph = self._create_graph()
     
-    def _create_graph(self) -> StateGraph:
-        """Create the LangGraph workflow for hierarchical planning."""
+    def _create_graph(self) -> Any:
+        """
+        Create the LangGraph workflow for hierarchical planning.
+        
+        graph TD
+            A[Start] --> B(Decompose Goal)
+            B --> C(Execute Task)
+            C --> D{Continue Execution?}
+            D -- Yes --> E(Evaluate Progress)
+            D -- No --> G[END]
+            E --> F{Continue Planning?}
+            F -- Execute Next --> C
+            F -- Replan --> B
+            F -- Complete --> G
+        """
         workflow = StateGraph(PlanningState)
         
         # Add nodes
@@ -143,7 +156,7 @@ Please create a hierarchical task breakdown for this goal.""")
             )
             
             # Parse the JSON response
-            response_text = response.content.strip()
+            response_text = str(response.content).strip()
 
             # Try to extract JSON from the response if it's wrapped in markdown
             if "```json" in response_text:
@@ -284,7 +297,7 @@ Please execute this task and provide the result.""")
             )
             
             # Mark task as completed
-            execution_plan.mark_task_completed(task.id, response.content)
+            execution_plan.mark_task_completed(task.id, str(response.content))
             
             return {
                 "execution_plan": execution_plan,
@@ -339,13 +352,13 @@ Please execute this task and provide the result.""")
     def create_plan(self, request: PlanningRequest) -> ExecutionPlan:
         """Create a hierarchical plan for the given goal."""
         try:
-            initial_state = {
+            initial_state: PlanningState = {
                 "goal": request.goal,
                 "context": request.context,
                 "max_depth": request.max_depth,
                 "max_tasks_per_level": request.max_tasks_per_level,
                 "current_depth": 0,
-                "execution_plan": None,
+                "execution_plan": ExecutionPlan(goal=request.goal),
                 "current_task_id": None,
                 "planning_complete": False
             }

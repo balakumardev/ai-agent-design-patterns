@@ -169,3 +169,6 @@ outputs/
 results/
 data/
 temp/
+
+# Blog post markdown file
+agent-blog-post.md

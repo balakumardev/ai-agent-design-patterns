@@ -92,7 +92,7 @@ Please evaluate this content and respond with JSON only:
             # Parse JSON response
             import json
             try:
-                result_data = json.loads(response.content)
+                result_data = json.loads(str(response.content))
                 
                 return ViolationResult(
                     principle_id=principle.id,
@@ -104,7 +104,7 @@ Please evaluate this content and respond with JSON only:
                 )
             except json.JSONDecodeError:
                 # Fallback if JSON parsing fails
-                violated = "true" in response.content.lower() or "violated" in response.content.lower()
+                violated = "true" in str(response.content).lower() or "violated" in str(response.content).lower()
                 return ViolationResult(
                     principle_id=principle.id,
                     violated=violated,
@@ -164,7 +164,7 @@ Please provide modified content that addresses this violation:""")
                 )
             )
             
-            return response.content.strip()
+            return str(response.content).strip()
             
         except Exception as e:
             # Fallback modification
@@ -174,7 +174,7 @@ Please provide modified content that addresses this violation:""")
 class ConstitutionalAI:
     """Constitutional AI agent that ensures responses comply with ethical principles."""
     
-    def __init__(self, model_name: str = None):
+    def __init__(self, model_name: Optional[str] = None):
         """Initialize the constitutional AI agent."""
         self.model = create_llm(model_name=model_name, temperature=0.1)
         self.principles = ConstitutionalPrincipleLibrary.get_default_principles()
@@ -182,8 +182,20 @@ class ConstitutionalAI:
         self.modifier = LLMConstitutionalModifier(self.model)
         self.graph = self._create_graph()
     
-    def _create_graph(self) -> StateGraph:
-        """Create the LangGraph workflow for constitutional AI."""
+    def _create_graph(self) -> Any:
+        """
+        Create the LangGraph workflow for constitutional AI.
+        
+        graph TD
+            A[Start] --> B(Generate Response)
+            B --> C(Assess Compliance)
+            C --> D{Should Modify?}
+            D -- Modify --> E(Modify Response)
+            D -- Complete --> G[END]
+            E --> F{Should Retry?}
+            F -- Retry --> C
+            F -- Complete --> G
+        """
         workflow = StateGraph(ConstitutionalAgentState)
         
         # Add nodes
@@ -302,7 +314,7 @@ class ConstitutionalAI:
         
         # Get violations that need modification
         violations_to_fix = [
-            v for v in assessment.violations 
+            v for v in (assessment.violations if assessment else [])
             if v.violated and v.suggested_action in [ActionType.MODIFY, ActionType.REJECT]
         ]
         
