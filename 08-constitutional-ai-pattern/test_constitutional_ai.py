@@ -266,11 +266,24 @@ class TestLLMConstitutionalValidator:
     @patch('constitutional_agent.ChatOpenAI')
     def test_validator_success(self, mock_chat_openai):
         """Test successful validation."""
-        # Mock the model response
-        mock_response = MagicMock()
-        mock_response.content = '{"violated": true, "confidence": 0.85, "explanation": "Contains harmful content"}'
+        # Create a mock structured response
+        from pydantic import BaseModel
+        class MockValidationResponse(BaseModel):
+            violated: bool
+            confidence: float
+            explanation: str
+        
+        mock_response = MockValidationResponse(
+            violated=True,
+            confidence=0.85,
+            explanation="Contains harmful content"
+        )
+        
+        # Mock the structured output
         mock_model = MagicMock()
-        mock_model.invoke.return_value = mock_response
+        mock_structured_model = MagicMock()
+        mock_structured_model.invoke.return_value = mock_response
+        mock_model.with_structured_output.return_value = mock_structured_model
         mock_chat_openai.return_value = mock_model
         
         validator = LLMConstitutionalValidator(mock_model)
@@ -294,12 +307,12 @@ class TestLLMConstitutionalValidator:
     
     @patch('constitutional_agent.ChatOpenAI')
     def test_validator_json_parse_error(self, mock_chat_openai):
-        """Test validator with JSON parse error."""
-        # Mock the model response with invalid JSON
-        mock_response = MagicMock()
-        mock_response.content = "This is not valid JSON but contains the word violated"
+        """Test validator with structured output error."""
+        # Mock the structured output to raise an exception
         mock_model = MagicMock()
-        mock_model.invoke.return_value = mock_response
+        mock_structured_model = MagicMock()
+        mock_structured_model.invoke.side_effect = Exception("Structured output failed")
+        mock_model.with_structured_output.return_value = mock_structured_model
         mock_chat_openai.return_value = mock_model
         
         validator = LLMConstitutionalValidator(mock_model)
@@ -317,8 +330,9 @@ class TestLLMConstitutionalValidator:
         result = validator.validate("test content", principle)
         
         assert result.principle_id == "test"
-        assert result.violated is True  # Should detect "violated" in response
-        assert result.confidence == 0.5  # Fallback confidence
+        assert result.violated is False  # Fallback to False on error
+        assert result.confidence == 0.0  # Fallback confidence
+        assert "Validation failed due to error" in result.explanation
 
 
 class TestLLMConstitutionalModifier:

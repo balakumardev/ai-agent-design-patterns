@@ -156,58 +156,32 @@ Please design a multi-agent system to accomplish this goal.""")
                 ]
             }
             console.print("🔄 Using fallback agent structure", style="yellow")
-            
-            # Create coordination plan
-            plan = CoordinationPlan(goal=goal)
-            
-            # Create agents
-            for agent_info in agent_data["agents"]:
-                agent = Agent(
-                    name=agent_info["name"],
-                    role=AgentRole(agent_info["role"]),
-                    capabilities=[
-                        AgentCapability(
-                            name=cap["name"],
-                            description=cap["description"],
-                            input_types=cap["input_types"],
-                            output_types=cap["output_types"],
-                            estimated_duration=cap.get("estimated_duration", 300)
-                        )
-                        for cap in agent_info["capabilities"]
-                    ]
-                )
-                plan.add_agent(agent)
-            
-            return {
-                "coordination_plan": plan,
-                "iteration": 1
-            }
-            
-        except Exception as e:
-            console.print(f"[red]Error in agent setup: {str(e)}[/red]")
-            # Create a simple fallback plan
-            plan = CoordinationPlan(goal=goal)
-            
-            # Add a basic coordinator agent
-            coordinator = Agent(
-                name="Coordinator",
-                role=AgentRole.COORDINATOR,
+        
+        # Create coordination plan
+        plan = CoordinationPlan(goal=goal)
+        
+        # Create agents
+        for agent_info in agent_data["agents"]:
+            agent = Agent(
+                name=agent_info["name"],
+                role=AgentRole(agent_info["role"]),
                 capabilities=[
                     AgentCapability(
-                        name="task_coordination",
-                        description="Coordinate tasks between agents",
-                        input_types=["goal"],
-                        output_types=["plan"],
-                        estimated_duration=300
+                        name=cap["name"],
+                        description=cap["description"],
+                        input_types=cap["input_types"],
+                        output_types=cap["output_types"],
+                        estimated_duration=cap.get("estimated_duration", 300)
                     )
+                    for cap in agent_info["capabilities"]
                 ]
             )
-            plan.add_agent(coordinator)
-            
-            return {
-                "coordination_plan": plan,
-                "iteration": 1
-            }
+            plan.add_agent(agent)
+        
+        return {
+            "coordination_plan": plan,
+            "iteration": 1
+        }
     
     def plan_coordination(self, state: CoordinationState) -> Dict[str, Any]:
         """Plan the coordination strategy and create tasks."""
@@ -287,42 +261,24 @@ Please create a coordination plan with specific tasks for the available agents."
                 ]
             }
             console.print("🔄 Using fallback task structure", style="yellow")
-            
-            # Create tasks
-            for task_info in task_data["tasks"]:
-                task = CoordinationTask(
-                    title=task_info["title"],
-                    description=task_info["description"],
-                    required_capabilities=task_info["required_capabilities"]
-                )
-                
-                # Assign agents based on capabilities
-                for agent in plan.agents.values():
-                    if any(agent.can_handle_task(cap) for cap in task.required_capabilities):
-                        task.assign_agent(agent.id)
-                        break
-                
-                plan.add_task(task)
-            
-            return {"coordination_plan": plan}
-            
-        except Exception as e:
-            console.print(f"[red]Error in coordination planning: {str(e)}[/red]")
-            # Create a simple fallback task
-            fallback_task = CoordinationTask(
-                title="Complete goal",
-                description=f"Work together to complete: {goal}",
-                required_capabilities=["task_coordination"]
+        
+        # Create tasks
+        for task_info in task_data["tasks"]:
+            task = CoordinationTask(
+                title=task_info["title"],
+                description=task_info["description"],
+                required_capabilities=task_info["required_capabilities"]
             )
             
-            # Assign to first available agent
-            if plan.agents:
-                first_agent = next(iter(plan.agents.values()))
-                fallback_task.assign_agent(first_agent.id)
+            # Assign agents based on capabilities
+            for agent in plan.agents.values():
+                if any(agent.can_handle_task(cap) for cap in task.required_capabilities):
+                    task.assign_agent(agent.id)
+                    break
             
-            plan.add_task(fallback_task)
-            
-            return {"coordination_plan": plan}
+            plan.add_task(task)
+        
+        return {"coordination_plan": plan}
     
     def execute_coordination(self, state: CoordinationState) -> Dict[str, Any]:
         """Execute the next task in the coordination plan."""

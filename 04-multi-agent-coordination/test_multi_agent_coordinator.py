@@ -227,8 +227,8 @@ class TestCoordinationPlan:
         plan = CoordinationPlan(goal="Test Goal")
         
         # Create agents with different capabilities
-        cap1 = AgentCapability(name="research", input_types=["query"])
-        cap2 = AgentCapability(name="analysis", input_types=["data"])
+        cap1 = AgentCapability(name="research", description="Perform research tasks", input_types=["query"])
+        cap2 = AgentCapability(name="analysis", description="Analyze data", input_types=["data"])
         
         agent1 = Agent(name="Researcher", capabilities=[cap1], status=AgentStatus.IDLE)
         agent2 = Agent(name="Analyst", capabilities=[cap2], status=AgentStatus.IDLE)
